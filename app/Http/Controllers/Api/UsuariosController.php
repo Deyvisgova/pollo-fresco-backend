@@ -7,6 +7,7 @@ use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\Rules\Password as PasswordRule;
 
 class UsuariosController extends Controller
 {
@@ -47,6 +48,14 @@ class UsuariosController extends Controller
     public function update(Request $request, User $usuario)
     {
         $data = $this->validarDatos($request, $usuario->usuario_id);
+        if ((int) $request->user()->id === (int) $usuario->id && ! $data['activo']) {
+            return response()->json(['message' => 'No puedes desactivar tu propia cuenta.'], 422);
+        }
+
+        if ($this->remueveUltimoAdministrador($usuario, (int) $data['rol_id'])) {
+            return response()->json(['message' => 'Debe permanecer al menos un administrador activo.'], 422);
+        }
+
         $data['roles_permitidos'] = $this->normalizarRolesPermitidos($data['rol_id'], $data['roles_permitidos'] ?? null);
         if (!empty($data['password'])) {
             $usuario->password_hash = Hash::make($data['password']);
@@ -55,6 +64,7 @@ class UsuariosController extends Controller
 
         $usuario->fill($data);
         $usuario->save();
+        $usuario->revokeAccessTokens();
 
         return $usuario;
     }
@@ -64,6 +74,15 @@ class UsuariosController extends Controller
      */
     public function destroy(User $usuario)
     {
+        if ((int) request()->user()->id === (int) $usuario->id) {
+            return response()->json(['message' => 'No puedes eliminar tu propia cuenta.'], 422);
+        }
+
+        if ($this->remueveUltimoAdministrador($usuario, 0)) {
+            return response()->json(['message' => 'No puedes eliminar al ultimo administrador.'], 422);
+        }
+
+        $usuario->revokeAccessTokens();
         $usuario->delete();
 
         return response()->json(['message' => 'Usuario eliminado.']);
@@ -95,15 +114,25 @@ class UsuariosController extends Controller
             'telefono' => ['nullable', 'string', 'max:9'],
             'password' => [
                 $usuarioId ? 'nullable' : 'required',
-                'string',
-                'min:6',
+                PasswordRule::min(12)->mixedCase()->letters()->numbers()->symbols(),
                 'confirmed',
-                'regex:/^(?=.*[A-Za-z])(?=.*\d).+$/',
             ],
             'activo' => ['required', 'boolean'],
         ];
 
         return $request->validate($reglas);
+    }
+
+    private function remueveUltimoAdministrador(User $usuario, int $nuevoRolId): bool
+    {
+        if ((int) $usuario->rol_id !== 1 || $nuevoRolId === 1) {
+            return false;
+        }
+
+        return User::where('rol_id', 1)
+            ->where('activo', true)
+            ->where('usuario_id', '!=', $usuario->id)
+            ->doesntExist();
     }
 
     /**

@@ -7,7 +7,10 @@
     body { font-family: DejaVu Sans, sans-serif; font-size: {{ $formato === 'a4' ? '11px' : '8px' }}; color: #111827; }
     .cabecera { width: 100%; margin-bottom: 14px; }
     .cabecera td { vertical-align: top; }
-    .emisor { width: 62%; }
+    .logo { width: 74px; }
+    .logo img { width: 62px; max-height: 62px; object-fit: contain; }
+    .logo-marca { width: 62px; height: 44px; border: 1px solid #bfdbfe; border-radius: 8px; color: #1d4ed8; text-align: center; padding-top: 18px; font-weight: bold; }
+    .emisor { width: 56%; }
     .documento { border: 2px solid #1d4ed8; text-align: center; padding: 10px; }
     .documento strong { display: block; font-size: 16px; margin: 4px 0; }
     h2, p { margin: 0 0 4px; }
@@ -32,8 +35,16 @@
 </head>
 <body>
   <table class="cabecera"><tr>
+    <td class="logo">
+      @if($logoEmpresa)
+        <img src="{{ $logoEmpresa }}" alt="Logo">
+      @else
+        <div class="logo-marca">{{ mb_substr($empresa->nombre_empresa ?? 'Empresa', 0, 2) }}</div>
+      @endif
+    </td>
     <td class="emisor">
-      <h2>{{ $emisor->razon_social ?? 'POLLO FRESCO' }}</h2>
+      <h2>{{ $empresa->nombre_empresa ?? ($emisor->razon_social ?? 'Empresa') }}</h2>
+      <p>{{ $emisor->razon_social ?? '' }}</p>
       <p>{{ $emisor->nombre_comercial ?? '' }}</p>
       <p>{{ $emisor->direccion_fiscal ?? '' }}</p>
       <p>{{ trim(($emisor->distrito ?? '') . ' ' . ($emisor->provincia ?? '') . ' ' . ($emisor->departamento ?? '')) }}</p>

@@ -8,7 +8,8 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::create('ventas', function (Blueprint $table) {
+        if (! Schema::hasTable('ventas')) {
+            Schema::create('ventas', function (Blueprint $table) {
             $table->bigIncrements('comprobante_venta_id');
             $table->unsignedInteger('usuario_id');
             $table->string('tipo_comprobante', 20);
@@ -33,9 +34,11 @@ return new class extends Migration
 
             $table->index(['serie', 'numero']);
             $table->index('fecha_emision');
-        });
+            });
+        }
 
-        Schema::create('venta_detalle', function (Blueprint $table) {
+        if (! Schema::hasTable('venta_detalle')) {
+            Schema::create('venta_detalle', function (Blueprint $table) {
             $table->bigIncrements('comprobante_venta_detalle_id');
             $table->unsignedBigInteger('comprobante_venta_id');
             $table->string('descripcion', 120);
@@ -48,7 +51,8 @@ return new class extends Migration
                 ->references('comprobante_venta_id')
                 ->on('ventas')
                 ->cascadeOnDelete();
-        });
+            });
+        }
     }
 
     public function down(): void

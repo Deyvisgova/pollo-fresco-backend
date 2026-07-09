@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\EntregaProveedor;
 use App\Models\PagoProveedor;
+use App\Services\ConfiguracionEmpresaService;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
@@ -13,6 +14,10 @@ use Illuminate\Support\Facades\Schema;
 
 class PagoProveedorController extends Controller
 {
+    public function __construct(private readonly ConfiguracionEmpresaService $configuracionEmpresaService)
+    {
+    }
+
     public function index(Request $request)
     {
         return response()->json($this->construirConsulta($request)->get());
@@ -25,6 +30,8 @@ class PagoProveedorController extends Controller
         $html = view('pdf.pagos-proveedor', [
             'pagos' => $pagos,
             'fechaGeneracion' => now()->format('d/m/Y H:i:s'),
+            'empresa' => $this->configuracionEmpresaService->obtener(),
+            'logoEmpresa' => $this->configuracionEmpresaService->logoDataUri(),
         ])->render();
 
         return Pdf::loadHTML($html)

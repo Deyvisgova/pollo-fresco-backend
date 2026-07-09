@@ -31,6 +31,8 @@ class PedidoDeliveryController extends Controller
 
         if ($this->usuarioEsDelivery($usuario)) {
             $rolVista = 'delivery';
+        } elseif (in_array($usuario?->role, ['vendor', 'cashier'], true)) {
+            $rolVista = 'vendedor';
         }
 
         $query = Pedido::query()
@@ -47,6 +49,10 @@ class PedidoDeliveryController extends Controller
                     ->whereNull('delivery_usuario_id')
                     ->orWhere('delivery_usuario_id', $usuario->id);
             });
+        } elseif ($rolVista === 'vendedor') {
+            $query
+                ->where('vendedor_usuario_id', $usuario->id)
+                ->whereDate('fecha_hora_creacion', now('America/Lima')->toDateString());
         }
 
         $pedidos = $query->get()->map(fn (Pedido $pedido) => $this->anexarResumenPago($pedido));
@@ -444,29 +450,15 @@ class PedidoDeliveryController extends Controller
             'latitud' => ['nullable', 'numeric', 'between:-90,90'],
             'longitud' => ['nullable', 'numeric', 'between:-180,180'],
             'foto_frontis_url' => ['nullable', 'string', 'max:255'],
-            'frontis_foto' => ['nullable', 'file', 'image', 'mimes:jpg,jpeg,png,webp', 'max:2048'],
+            'frontis_foto' => ['nullable', 'file', 'image', 'mimes:jpg,jpeg,png,webp', 'max:4096', 'dimensions:min_width=200,min_height=200,max_width=8000,max_height=8000'],
             'referencias' => ['nullable', 'string', 'max:250'],
         ]);
 
         if ($request->hasFile('frontis_foto')) {
-            $archivo = $request->file('frontis_foto');
-            $mimeType = (string) $archivo->getMimeType();
-
-            if (!str_starts_with($mimeType, 'image/')) {
-                return response()->json(['message' => 'La foto del frontis debe ser una imagen valida.'], 422);
-            }
-
-            $extension = strtolower($archivo->extension() ?: $archivo->getClientOriginalExtension() ?: 'jpg');
-            $extension = in_array($extension, ['jpg', 'jpeg', 'png', 'webp'], true) ? $extension : 'jpg';
-            $nombreArchivo = 'frontis-' . Str::uuid() . '.' . $extension;
-            $rutaPublica = public_path('assets/images/frontis');
-
-            if (!File::exists($rutaPublica)) {
-                File::makeDirectory($rutaPublica, 0755, true);
-            }
-
-            $archivo->move($rutaPublica, $nombreArchivo);
+            $nombreArchivo = $this->guardarFrontisSeguro($request->file('frontis_foto'));
             $payload['foto_frontis_url'] = '/api/frontis/' . $nombreArchivo;
+        } else {
+            unset($payload['foto_frontis_url']);
         }
 
         DB::transaction(function () use ($pedido, $payload, $request) {
@@ -511,6 +503,7 @@ class PedidoDeliveryController extends Controller
         abort_unless($archivo === basename($archivo) && preg_match('/^[A-Za-z0-9._-]+$/', $archivo), 404);
 
         $rutas = [
+            storage_path('app/private/frontis/' . $archivo),
             public_path('assets/images/frontis/' . $archivo),
             public_path('assets/images/img-frontis/' . $archivo),
         ];
@@ -518,12 +511,54 @@ class PedidoDeliveryController extends Controller
         foreach ($rutas as $ruta) {
             if (File::exists($ruta)) {
                 return response()->file($ruta, [
-                    'Cache-Control' => 'public, max-age=604800',
+                    'Cache-Control' => 'private, no-store, max-age=0',
+                    'X-Content-Type-Options' => 'nosniff',
                 ]);
             }
         }
 
         abort(404);
+    }
+
+    private function guardarFrontisSeguro(object $archivo): string
+    {
+        $contenido = file_get_contents($archivo->getRealPath());
+        $origen = $contenido !== false ? @imagecreatefromstring($contenido) : false;
+
+        if ($origen === false) {
+            abort(422, 'La foto del frontis no es una imagen valida.');
+        }
+
+        $ancho = imagesx($origen);
+        $alto = imagesy($origen);
+        if ($ancho <= 0 || $alto <= 0 || ($ancho * $alto) > 40000000) {
+            imagedestroy($origen);
+            abort(422, 'La resolucion de la foto no es valida.');
+        }
+
+        $escala = min(1, 1600 / $ancho, 1200 / $alto);
+        $nuevoAncho = max(1, (int) round($ancho * $escala));
+        $nuevoAlto = max(1, (int) round($alto * $escala));
+        $destino = imagecreatetruecolor($nuevoAncho, $nuevoAlto);
+        $fondo = imagecolorallocate($destino, 255, 255, 255);
+        imagefill($destino, 0, 0, $fondo);
+        imagecopyresampled($destino, $origen, 0, 0, 0, 0, $nuevoAncho, $nuevoAlto, $ancho, $alto);
+
+        $directorio = storage_path('app/private/frontis');
+        if (! File::exists($directorio)) {
+            File::makeDirectory($directorio, 0750, true);
+        }
+
+        $nombreArchivo = 'frontis-'.Str::uuid().'.webp';
+        $guardado = imagewebp($destino, $directorio.DIRECTORY_SEPARATOR.$nombreArchivo, 78);
+        imagedestroy($origen);
+        imagedestroy($destino);
+
+        if (! $guardado) {
+            abort(500, 'No se pudo guardar la foto del frontis.');
+        }
+
+        return $nombreArchivo;
     }
 
     private function normalizarUrlFrontis(?string $url): ?string

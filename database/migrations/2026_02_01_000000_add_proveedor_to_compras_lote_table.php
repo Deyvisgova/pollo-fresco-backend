@@ -8,6 +8,10 @@ return new class extends Migration
 {
     public function up(): void
     {
+        if (! Schema::hasTable('compras_lote') || Schema::hasColumn('compras_lote', 'proveedor_id')) {
+            return;
+        }
+
         Schema::table('compras_lote', function (Blueprint $table) {
             $table->unsignedInteger('proveedor_id')->nullable()->after('usuario_id');
             $table

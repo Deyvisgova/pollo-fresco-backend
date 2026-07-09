@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Services\ConfiguracionEmpresaService;
 use BaconQrCode\Renderer\Image\SvgImageBackEnd;
 use BaconQrCode\Renderer\ImageRenderer;
 use BaconQrCode\Renderer\RendererStyle\RendererStyle;
@@ -13,6 +14,10 @@ use Illuminate\Support\Facades\DB;
 
 class ComprobantePdfController extends Controller
 {
+    public function __construct(private readonly ConfiguracionEmpresaService $configuracionEmpresaService)
+    {
+    }
+
     public function descargar(Request $request, int $ventaId)
     {
         abort_if($request->user()?->role === 'delivery', 403, 'El rol delivery no puede gestionar facturacion.');
@@ -24,6 +29,8 @@ class ComprobantePdfController extends Controller
         $detalles = DB::table('venta_detalle')->where('comprobante_venta_id', $ventaId)
             ->orderBy('comprobante_venta_detalle_id')->get();
         $emisor = DB::table('configuracion_sunat')->orderByDesc('configuracion_sunat_id')->first();
+        $empresa = $this->configuracionEmpresaService->obtener();
+        $logoEmpresa = $this->configuracionEmpresaService->logoDataUri();
 
         $qrTexto = implode('|', [
             $emisor?->ruc ?: '',
@@ -45,7 +52,7 @@ class ComprobantePdfController extends Controller
             default => 'a4',
         };
 
-        return Pdf::loadView('pdf.comprobante-venta', compact('venta', 'detalles', 'emisor', 'qrSvg', 'formato'))
+        return Pdf::loadView('pdf.comprobante-venta', compact('venta', 'detalles', 'emisor', 'empresa', 'logoEmpresa', 'qrSvg', 'formato'))
             ->setPaper($papel)
             ->download("comprobante-{$venta->serie}-{$venta->numero}-{$formato}.pdf");
     }

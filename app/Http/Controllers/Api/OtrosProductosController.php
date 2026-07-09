@@ -629,6 +629,10 @@ class OtrosProductosController extends Controller
 
         $fecha = $request->input('fecha');
         $filas = collect($request->input('filas', []));
+        $esVendedor = in_array($usuario->role, ['vendor', 'cashier'], true);
+        if ($esVendedor && Carbon::parse($fecha)->toDateString() !== now('America/Lima')->toDateString()) {
+            return response()->json(['message' => 'El vendedor solo puede registrar ventas del dia actual.'], 403);
+        }
         $tienePedidoId = Schema::hasColumn('otros_productos_ventas_diarias', 'pedido_id');
         $tieneOrigen = Schema::hasColumn('otros_productos_ventas_diarias', 'origen');
 
@@ -648,8 +652,12 @@ class OtrosProductosController extends Controller
             ->keyBy('producto_id');
 
         try {
-            $filasNormalizadas = $filas->map(function ($fila) use ($productosVenta) {
+            $filasNormalizadas = $filas->map(function ($fila) use ($productosVenta, $esVendedor) {
                 $producto = $productosVenta[(int) $fila['producto_id']] ?? null;
+                if ($esVendedor) {
+                    $fila['pedido_id'] = null;
+                    $fila['origen'] = 'MANUAL';
+                }
                 return $this->normalizarFilaVentaDiaria($fila, $producto);
             });
         } catch (\InvalidArgumentException $e) {

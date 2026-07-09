@@ -6,6 +6,12 @@
         @page { margin: 24px; }
         body { font-family: DejaVu Sans, sans-serif; color: #17233b; font-size: 9px; }
         h1 { margin: 0 0 4px; font-size: 18px; color: #12376c; }
+        .cabecera { width: 100%; margin-bottom: 12px; border-bottom: 2px solid #dbe8fb; padding-bottom: 10px; }
+        .cabecera td { vertical-align: middle; }
+        .logo { width: 72px; }
+        .logo img { width: 58px; max-height: 58px; object-fit: contain; }
+        .logo-marca { width: 58px; height: 40px; border: 1px solid #bfdbfe; border-radius: 8px; color: #1d4ed8; text-align: center; padding-top: 18px; font-weight: bold; }
+        .empresa { color: #60708c; text-transform: uppercase; letter-spacing: .04em; font-size: 8px; margin-bottom: 3px; }
         .meta { margin-bottom: 14px; color: #566982; }
         .kpis { width: 100%; border-spacing: 7px; margin: 0 -7px 14px; }
         .kpis td { width: 25%; padding: 10px; border: 1px solid #cbd8e8; background: #f4f7fb; }
@@ -19,8 +25,22 @@
     </style>
 </head>
 <body>
-    <h1>POLLO FRESCO - {{ $titulo }}</h1>
-    <div class="meta">Periodo: {{ $datos['fecha_desde'] }} al {{ $datos['fecha_hasta'] }} | Generado: {{ $generadoEn }}</div>
+    <table class="cabecera">
+        <tr>
+            <td class="logo">
+                @if($logoEmpresa)
+                    <img src="{{ $logoEmpresa }}" alt="Logo">
+                @else
+                    <div class="logo-marca">{{ mb_substr($empresa->nombre_empresa ?? 'Empresa', 0, 2) }}</div>
+                @endif
+            </td>
+            <td>
+                <div class="empresa">{{ $empresa->nombre_empresa ?? 'Empresa' }}</div>
+                <h1>{{ $titulo }}</h1>
+                <div class="meta">Periodo: {{ $datos['fecha_desde'] }} al {{ $datos['fecha_hasta'] }} | Generado: {{ $generadoEn }}</div>
+            </td>
+        </tr>
+    </table>
 
     @if ($vista === 'resumen')
         @php
@@ -78,6 +98,6 @@
             </tbody>
         </table>
     @endif
-    <div class="pie">Reporte generado por el sistema Pollo Fresco</div>
+    <div class="pie">Reporte generado por {{ $empresa->nombre_empresa ?? 'el sistema' }}</div>
 </body>
 </html>

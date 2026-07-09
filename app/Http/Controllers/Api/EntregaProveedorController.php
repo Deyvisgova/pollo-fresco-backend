@@ -47,13 +47,14 @@ class EntregaProveedorController extends Controller
      */
     public function store(Request $request)
     {
+        $esVendedor = in_array($request->user()?->role, ['vendor', 'cashier'], true);
         $rules = [
             'proveedor_id' => ['required', 'integer', 'exists:proveedores,proveedor_id'],
-            'usuario_id' => ['required', 'integer', 'exists:usuarios,usuario_id'],
+            'usuario_id' => ['nullable', 'integer', 'exists:usuarios,usuario_id'],
             'fecha_hora' => ['required', 'date'],
             'cantidad_pollos' => ['required', 'integer', 'min:0'],
             'peso_total_kg' => ['required', 'numeric', 'min:0'],
-            'merma_kg' => ['required', 'numeric', 'min:0'],
+            'merma_kg' => ['nullable', 'numeric', 'min:0'],
             'costo_total' => ['nullable', 'numeric', 'min:0'],
             'precio_kg' => ['nullable', 'numeric', 'min:0'],
             'tipo' => ['required', 'string', 'max:50'],
@@ -65,19 +66,23 @@ class EntregaProveedorController extends Controller
 
         $validated = $request->validate($rules);
 
+        if ($esVendedor && date('Y-m-d', strtotime($validated['fecha_hora'])) !== now('America/Lima')->toDateString()) {
+            return response()->json(['message' => 'El vendedor solo puede registrar entregas del dia actual.'], 403);
+        }
+
         $data = [
             'proveedor_id' => $validated['proveedor_id'],
-            'usuario_id' => $validated['usuario_id'],
+            'usuario_id' => $request->user()->id,
             'fecha_hora' => $validated['fecha_hora'],
             'cantidad_pollos' => $validated['cantidad_pollos'],
             'peso_total_kg' => $validated['peso_total_kg'],
-            'merma_kg' => $validated['merma_kg'],
-            'costo_total' => $validated['costo_total'] ?? 0.0,
+            'merma_kg' => $esVendedor ? 0.0 : ($validated['merma_kg'] ?? 0.0),
+            'costo_total' => $esVendedor ? 0.0 : ($validated['costo_total'] ?? 0.0),
             'tipo' => $validated['tipo'],
         ];
 
         if ($this->soportaEstadoPago()) {
-            $data['estado_pago'] = $validated['estado_pago'] ?? 'PENDIENTE';
+            $data['estado_pago'] = $esVendedor ? 'PENDIENTE' : ($validated['estado_pago'] ?? 'PENDIENTE');
         }
 
         $entrega = EntregaProveedor::create($data);

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Services\ConfiguracionEmpresaService;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -11,6 +12,10 @@ use Illuminate\Support\Facades\DB;
 
 class ReporteController extends Controller
 {
+    public function __construct(private readonly ConfiguracionEmpresaService $configuracionEmpresaService)
+    {
+    }
+
     public function inicio(Request $request)
     {
         [$desde, $hasta] = $this->resolverRango($request);
@@ -142,6 +147,8 @@ class ReporteController extends Controller
             'titulo' => $titulos[$vista],
             'datos' => $datos,
             'generadoEn' => Carbon::now('America/Lima')->format('d/m/Y H:i'),
+            'empresa' => $this->configuracionEmpresaService->obtener(),
+            'logoEmpresa' => $this->configuracionEmpresaService->logoDataUri(),
         ])
             ->setPaper('a4', 'landscape')
             ->download("reporte-{$vista}-{$datos['fecha_desde']}-{$datos['fecha_hasta']}.pdf");

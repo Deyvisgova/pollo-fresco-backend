@@ -193,6 +193,11 @@ class User extends Authenticatable
         };
     }
 
+    public function revokeAccessTokens(): void
+    {
+        $this->tokens()->delete();
+    }
+
     private function obtenerRolActivoDesdeToken(): ?int
     {
         $token = $this->currentAccessToken();

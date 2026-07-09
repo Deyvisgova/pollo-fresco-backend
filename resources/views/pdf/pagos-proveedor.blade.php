@@ -5,6 +5,12 @@
   <style>
     body { font-family: DejaVu Sans, sans-serif; font-size: 12px; color: #111827; }
     h2 { margin: 0 0 8px; }
+    .cabecera { width: 100%; margin-bottom: 12px; border-bottom: 2px solid #dbe8fb; padding-bottom: 10px; }
+    .cabecera td { vertical-align: middle; }
+    .logo { width: 72px; }
+    .logo img { width: 58px; max-height: 58px; object-fit: contain; }
+    .logo-marca { width: 58px; height: 40px; border: 1px solid #bfdbfe; border-radius: 8px; color: #1d4ed8; text-align: center; padding-top: 18px; font-weight: bold; }
+    .empresa { color: #60708c; text-transform: uppercase; letter-spacing: .04em; font-size: 9px; margin-bottom: 3px; }
     .meta { margin-bottom: 12px; color: #374151; }
     table { width: 100%; border-collapse: collapse; }
     th, td { border: 1px solid #d1d5db; padding: 6px; text-align: left; }
@@ -12,8 +18,22 @@
   </style>
 </head>
 <body>
-  <h2>Historial de pago de proveedores</h2>
-  <div class="meta">Generado: {{ $fechaGeneracion }}</div>
+  <table class="cabecera">
+    <tr>
+      <td class="logo">
+        @if($logoEmpresa)
+          <img src="{{ $logoEmpresa }}" alt="Logo">
+        @else
+          <div class="logo-marca">{{ mb_substr($empresa->nombre_empresa ?? 'Empresa', 0, 2) }}</div>
+        @endif
+      </td>
+      <td>
+        <div class="empresa">{{ $empresa->nombre_empresa ?? 'Empresa' }}</div>
+        <h2>Historial de pago de proveedores</h2>
+        <div class="meta">Generado: {{ $fechaGeneracion }}</div>
+      </td>
+    </tr>
+  </table>
 
   <table>
     <thead>
