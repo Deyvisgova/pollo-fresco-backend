@@ -43,6 +43,11 @@ Route::get('configuracion/empresa', [ConfiguracionController::class, 'mostrarEmp
 Route::middleware(['auth:sanctum', 'active'])->group(function () {
     Route::get('/user', fn (Request $request) => $request->user());
 
+    // La consulta de pedidos la usan vendedor, administrador y delivery.
+    Route::middleware('role:admin,vendor,delivery')->group(function () {
+        Route::get('pedidos-delivery', [PedidoDeliveryController::class, 'index']);
+    });
+
     // Lecturas y registros operativos permitidos al vendedor.
     Route::middleware('role:admin,vendor')->group(function () {
         Route::get('proveedores', [ProveedorController::class, 'index']);
@@ -64,7 +69,6 @@ Route::middleware(['auth:sanctum', 'active'])->group(function () {
         Route::post('ventas', [VentaController::class, 'store']);
         Route::get('ventas/{ventaId}/pdf', [ComprobantePdfController::class, 'descargar']);
 
-        Route::get('pedidos-delivery', [PedidoDeliveryController::class, 'index']);
         Route::post('pedidos-delivery', [PedidoDeliveryController::class, 'store']);
     });
 
