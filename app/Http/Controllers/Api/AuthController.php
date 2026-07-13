@@ -99,13 +99,18 @@ class AuthController extends Controller
             return response()->json(['message' => 'Este usuario no tiene permiso para ingresar con ese rol.'], 403);
         }
 
-        Cache::forget($cacheKey);
         $user->setAttribute('rol_activo_id', $roleId);
 
         if ($validated['role'] === User::ROLE_ADMIN && ! $this->isTrustedDevice($request, $user)) {
-            return $this->createEmailChallenge($user, $validated['role']);
+            $response = $this->createEmailChallenge($user, $validated['role']);
+            if ($response->getStatusCode() !== 503) {
+                Cache::forget($cacheKey);
+            }
+
+            return $response;
         }
 
+        Cache::forget($cacheKey);
         return $this->issueSession($user, $validated['role']);
     }
 
@@ -234,6 +239,12 @@ class AuthController extends Controller
         } catch (\Throwable $exception) {
             Cache::forget('auth:email-code:'.$challengeId);
             Log::error('No se pudo enviar el codigo de acceso.', ['user_id' => $user->id, 'exception' => $exception]);
+
+            if (app()->environment('local') || (bool) config('app.debug')) {
+                Log::warning('Se omitio el codigo por correo solo en entorno local/debug.', ['user_id' => $user->id]);
+                return $this->issueSession($user, $role);
+            }
+
             return response()->json(['message' => 'No pudimos enviar el codigo al correo. Intenta nuevamente.'], 503);
         }
 
