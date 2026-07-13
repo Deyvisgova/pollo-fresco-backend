@@ -732,8 +732,18 @@ class PedidoDeliveryController extends Controller
             return;
         }
 
-        DB::table('pedido_estados')->updateOrInsert(['estado_id' => 4], ['nombre' => 'EN_RUTA']);
-        DB::table('pedido_estados')->updateOrInsert(['estado_id' => 5], ['nombre' => 'NO_ENTREGADO']);
+        foreach ([
+            1 => 'PENDIENTE',
+            2 => 'ENTREGADO',
+            3 => 'CANCELADO',
+            4 => 'EN_RUTA',
+            5 => 'NO_ENTREGADO',
+        ] as $estadoId => $nombre) {
+            DB::table('pedido_estados')->updateOrInsert(
+                ['estado_id' => $estadoId],
+                ['nombre' => $nombre]
+            );
+        }
     }
 
     private function usuarioEsDelivery(?object $usuario): bool
