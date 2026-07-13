@@ -3,6 +3,8 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\Cliente;
+use App\Models\Proveedor;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Validation\Rule;
 
@@ -17,6 +19,15 @@ class DocumentoIdentidadController extends Controller
                 'numero' => ['required', 'digits:' . ($tipo === 'dni' ? 8 : 11)],
             ]
         )->validate();
+
+        $registroLocal = $this->buscarRegistroLocal($tipo, $numero);
+        if ($registroLocal) {
+            return response()->json([
+                'success' => true,
+                'data' => $registroLocal,
+                'source' => 'local',
+            ]);
+        }
 
         $token = config('services.apiperu.token');
         if (! $token) {
@@ -37,5 +48,64 @@ class DocumentoIdentidadController extends Controller
         }
 
         return response()->json($respuesta->json());
+    }
+
+    private function buscarRegistroLocal(string $tipo, string $numero): ?array
+    {
+        $columna = $tipo === 'dni' ? 'dni' : 'ruc';
+
+        $cliente = Cliente::query()->where($columna, $numero)->first();
+        if ($cliente) {
+            return $this->mapearRegistroLocal($tipo, $numero, [
+                'nombres' => $cliente->nombres,
+                'apellidos' => $cliente->apellidos,
+                'nombre_empresa' => $cliente->nombre_empresa,
+                'direccion' => $cliente->direccion_fiscal ?: $cliente->direccion,
+                'telefono' => $cliente->celular,
+            ]);
+        }
+
+        $proveedor = Proveedor::query()->where($columna, $numero)->first();
+        if ($proveedor) {
+            return $this->mapearRegistroLocal($tipo, $numero, [
+                'nombres' => $proveedor->nombres,
+                'apellidos' => $proveedor->apellidos,
+                'nombre_empresa' => $proveedor->nombre_empresa,
+                'direccion' => $proveedor->direccion,
+                'telefono' => $proveedor->telefono,
+            ]);
+        }
+
+        return null;
+    }
+
+    private function mapearRegistroLocal(string $tipo, string $numero, array $registro): array
+    {
+        $nombres = trim((string) ($registro['nombres'] ?? ''));
+        $apellidos = trim((string) ($registro['apellidos'] ?? ''));
+        $empresa = trim((string) ($registro['nombre_empresa'] ?? ''));
+        $nombreCompleto = trim($nombres . ' ' . $apellidos);
+
+        if ($tipo === 'ruc') {
+            return [
+                'ruc' => $numero,
+                'numero' => $numero,
+                'nombre_o_razon_social' => $empresa ?: $nombreCompleto,
+                'razon_social' => $empresa ?: $nombreCompleto,
+                'nombre_comercial' => $empresa,
+                'direccion' => $registro['direccion'] ?? '',
+                'telefono' => $registro['telefono'] ?? '',
+            ];
+        }
+
+        return [
+            'dni' => $numero,
+            'numero' => $numero,
+            'nombres' => $nombres,
+            'apellido' => $apellidos,
+            'nombre_completo' => $nombreCompleto ?: $empresa,
+            'telefono' => $registro['telefono'] ?? '',
+            'direccion' => $registro['direccion'] ?? '',
+        ];
     }
 }
