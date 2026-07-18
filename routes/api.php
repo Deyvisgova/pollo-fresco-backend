@@ -39,6 +39,8 @@ Route::get('pagina-publica', [PaginaPublicaController::class, 'mostrar']);
 Route::get('pagina-publica/imagenes/{archivo}', [PaginaPublicaController::class, 'mostrarImagen'])
     ->where('archivo', '[A-Za-z0-9._-]+');
 Route::get('configuracion/empresa', [ConfiguracionController::class, 'mostrarEmpresa']);
+Route::get('frontis/{archivo}', [PedidoDeliveryController::class, 'mostrarFotoFrontis'])
+    ->where('archivo', '[A-Za-z0-9._-]+');
 
 Route::middleware(['auth:sanctum', 'active'])->group(function () {
     Route::get('/user', fn (Request $request) => $request->user());
@@ -74,8 +76,6 @@ Route::middleware(['auth:sanctum', 'active'])->group(function () {
 
     // Operaciones exclusivas del repartidor y del administrador.
     Route::middleware('role:admin,delivery')->group(function () {
-        Route::get('frontis/{archivo}', [PedidoDeliveryController::class, 'mostrarFotoFrontis'])
-            ->where('archivo', '[A-Za-z0-9._-]+');
         Route::get('pedidos-delivery/cobros-atrasados', [PedidoDeliveryController::class, 'cobrosAtrasadosDelivery']);
         Route::get('cuentas-por-cobrar', [PedidoDeliveryController::class, 'cuentasPorCobrar']);
         Route::post('cuentas-por-cobrar/clientes/{cliente}/pagos', [PedidoDeliveryController::class, 'registrarPagoCliente']);

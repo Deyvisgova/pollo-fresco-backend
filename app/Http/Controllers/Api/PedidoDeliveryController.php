@@ -156,7 +156,7 @@ class PedidoDeliveryController extends Controller
         $this->asegurarEstadosDelivery();
 
         $payload = $request->validate([
-            'estado_id' => ['required', Rule::in([1, 2, 3, 4, 5])],
+            'estado_id' => ['required', Rule::in([1, 2, 3, 5])],
             'motivo_cancelacion' => ['nullable', 'string', 'max:250', 'required_if:estado_id,3,5'],
             'estado_pago' => ['required', Rule::in(['COMPLETO', 'PENDIENTE', 'PARCIAL'])],
             'pago_parcial' => ['nullable', 'numeric', 'min:0'],
@@ -175,11 +175,6 @@ class PedidoDeliveryController extends Controller
             $pedido->estado_id = (int) $payload['estado_id'];
 
             if ($pedido->estado_id === 1) {
-                $pedido->fecha_hora_entrega = null;
-                $pedido->motivo_cancelacion = null;
-            }
-
-            if ($pedido->estado_id === 4) {
                 $pedido->fecha_hora_entrega = null;
                 $pedido->motivo_cancelacion = null;
             }
@@ -450,7 +445,7 @@ class PedidoDeliveryController extends Controller
             'latitud' => ['nullable', 'numeric', 'between:-90,90'],
             'longitud' => ['nullable', 'numeric', 'between:-180,180'],
             'foto_frontis_url' => ['nullable', 'string', 'max:255'],
-            'frontis_foto' => ['nullable', 'file', 'image', 'mimes:jpg,jpeg,png,webp', 'max:4096', 'dimensions:min_width=200,min_height=200,max_width=8000,max_height=8000'],
+            'frontis_foto' => ['nullable', 'file', 'image', 'mimes:jpg,jpeg,png,webp', 'max:8192', 'dimensions:min_width=120,min_height=120,max_width=10000,max_height=10000'],
             'referencias' => ['nullable', 'string', 'max:250'],
         ]);
 
@@ -736,7 +731,6 @@ class PedidoDeliveryController extends Controller
             1 => 'PENDIENTE',
             2 => 'ENTREGADO',
             3 => 'CANCELADO',
-            4 => 'EN_RUTA',
             5 => 'NO_ENTREGADO',
         ] as $estadoId => $nombre) {
             DB::table('pedido_estados')->updateOrInsert(
