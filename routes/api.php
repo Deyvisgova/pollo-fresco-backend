@@ -41,6 +41,10 @@ Route::get('pagina-publica/imagenes/{archivo}', [PaginaPublicaController::class,
 Route::get('configuracion/empresa', [ConfiguracionController::class, 'mostrarEmpresa']);
 Route::get('frontis/{archivo}', [PedidoDeliveryController::class, 'mostrarFotoFrontis'])
     ->where('archivo', '[A-Za-z0-9._-]+');
+Route::get('documentos/{tipo}/{numero}', [DocumentoIdentidadController::class, 'mostrar'])
+    ->middleware('throttle:30,1')
+    ->whereIn('tipo', ['dni', 'ruc'])
+    ->whereNumber('numero');
 
 Route::middleware(['auth:sanctum', 'active'])->group(function () {
     Route::get('/user', fn (Request $request) => $request->user());
@@ -62,10 +66,6 @@ Route::middleware(['auth:sanctum', 'active'])->group(function () {
         Route::get('otros-productos/productos', [OtrosProductosController::class, 'productosIndex']);
         Route::get('otros-productos/ventas-diarias', [OtrosProductosController::class, 'ventasDiariasEstado']);
         Route::put('otros-productos/ventas-diarias', [OtrosProductosController::class, 'ventasDiariasGuardar']);
-        Route::get('documentos/{tipo}/{numero}', [DocumentoIdentidadController::class, 'mostrar'])
-            ->whereIn('tipo', ['dni', 'ruc'])
-            ->whereNumber('numero');
-
         Route::get('ventas/preparar-desde-pedido/{pedido}', [VentaController::class, 'prepararDesdePedido']);
         Route::get('ventas/siguiente-correlativo', [VentaController::class, 'siguienteCorrelativo']);
         Route::post('ventas', [VentaController::class, 'store']);
